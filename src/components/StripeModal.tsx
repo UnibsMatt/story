@@ -1,9 +1,13 @@
-import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
-import React, { useState } from 'react';
+import "@/components/StripeModal.css";
+import {
+  CardElement,
+  Elements,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 
-const stripePromise = loadStripe('pk_test_XUIpXpyaGuuw0Dc9Ng80xFWs');
-
+import React, { useState } from "react";
 const CheckoutForm = () => {
   const stripe = useStripe();
   const elements = useElements();
@@ -27,12 +31,12 @@ const CheckoutForm = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 2000 }) // Amount in cents
+      const response = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 2000 }), // Amount in cents
       });
-
+      console.log(await response.json());
       const { clientSecret } = await response.json();
 
       // Confirm card payment
@@ -40,19 +44,19 @@ const CheckoutForm = () => {
         payment_method: {
           card: cardElement,
           billing_details: {
-            name: 'Customer Name'
-          }
-        }
+            name: "Customer Name",
+          },
+        },
       });
 
       if (result.error) {
-        setError(result.error.message || 'Payment failed');
+        setError(result.error.message || "Payment failed");
       } else {
         // Payment successful
-        console.log('Payment successful:', result.paymentIntent);
+        console.log("Payment successful:", result.paymentIntent);
       }
     } catch (err) {
-      setError('An error occurred during payment processing');
+      setError("An error occurred during payment processing");
       console.error(err);
     } finally {
       setLoading(false);
@@ -62,24 +66,22 @@ const CheckoutForm = () => {
   return (
     <form onSubmit={handleSubmit}>
       <div className="form-row">
-        <label htmlFor="card-element">
-          Credit or debit card
-        </label>
+        <label htmlFor="card-element">Credit or debit card</label>
         <CardElement
           id="card-element"
           options={{
             style: {
               base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': {
-                  color: '#aab7c4'
-                }
+                fontSize: "16px",
+                color: "#424770",
+                "::placeholder": {
+                  color: "#aab7c4",
+                },
               },
               invalid: {
-                color: '#9e2146'
-              }
-            }
+                color: "#9e2146",
+              },
+            },
           }}
         />
       </div>
@@ -89,21 +91,30 @@ const CheckoutForm = () => {
         disabled={!stripe || loading}
         className="payment-button"
       >
-        {loading ? 'Processing...' : 'Pay $20.00'}
+        {loading ? "Processing..." : "Pay $20.00"}
       </button>
     </form>
   );
 };
 
-const StripeModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+const StripeModal = ({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
   if (!isOpen) return null;
+  const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Secure Payment</h2>
-          <button className="close-button" onClick={onClose}>×</button>
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
         </div>
         <div className="modal-body">
           <Elements stripe={stripePromise}>

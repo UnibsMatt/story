@@ -31,6 +31,7 @@ src/
 ### App.jsx
 
 The main application component that handles:
+
 - State management for story content, loading status, and errors
 - Story generation logic (simulated with mock data)
 - Modal visibility control
@@ -43,6 +44,7 @@ A reusable modal component that can be opened/closed via props.
 ### App.css
 
 Contains all the styling for the application including:
+
 - Layout and spacing
 - Button styles
 - Responsive design elements
@@ -71,10 +73,12 @@ Contains all the styling for the application including:
 ## Customization
 
 To modify the stories generated:
+
 1. Edit the `mockStories` array in `App.jsx`
 2. Add or remove stories as needed
 
 To change the styling:
+
 1. Modify the CSS in `App.css`
 2. Update class names in `App.jsx` as needed
 
