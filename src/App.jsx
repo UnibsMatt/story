@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import "./App.css";
 
 import ReactMarkdown from "react-markdown";
@@ -13,8 +14,9 @@ function App() {
   const generateRandomStory = async () => {
     setLoading(true);
     setError("");
+    setStory(""); // Clear previous story
     try {
-      // ✅ Call ChatGPT API here
+      // ✅ Call ChatGPT API with streaming
       const response = await fetch(
         "https://api.openai.com/v1/chat/completions",
         {
@@ -29,7 +31,7 @@ function App() {
               {
                 role: "system",
                 content:
-                  "Tell a random children’s story (5–7 short paragraphs) by rolling dice to pick a hero, sidekick, setting, and problem from fun, silly options. Use playful language for kids aged [insert age], add surprises, and end with a cheerful moral..",
+                  "Tell a random children's story (5–7 short paragraphs) by rolling dice to pick a hero, sidekick, setting, and problem from fun, silly options. Use playful language for kids aged [insert age], add surprises, and end with a cheerful moral..",
               },
               {
                 role: "user",
@@ -38,6 +40,7 @@ function App() {
               },
             ],
             max_tokens: 500,
+            stream: true, // Enable streaming
           }),
         },
       );
@@ -46,13 +49,53 @@ function App() {
         throw new Error(`API error: ${response.status}`);
       }
 
-      const data = await response.json();
-      const aiStory = data.choices[0]?.message?.content?.trim();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullStory = "";
 
-      if (aiStory) {
-        setStory(aiStory);
-      } else {
-        // fallback to mock stories
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') {
+                setLoading(false);
+                return;
+              }
+
+              if (data) {
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    fullStory += content;
+                    // Force React to update immediately with flushSync
+                    flushSync(() => {
+                      setStory(fullStory);
+                    });
+                  }
+                } catch (e) {
+                  // Skip invalid JSON lines
+                  console.log('Skipping invalid JSON:', data);
+                  continue;
+                }
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+        setLoading(false);
+      }
+
+      if (!fullStory.trim()) {
+        // fallback to mock stories if streaming fails
         const mockStories = [
           "Once upon a time, in a land far away, there lived a brave knight who discovered a mysterious map leading to a hidden treasure.",
           "A young scientist accidentally created a talking cat that could predict the future, changing everything she thought she knew about reality.",
@@ -94,7 +137,7 @@ function App() {
       {story && (
         <div className="story-container">
           <h2>Your Story:</h2>
-          <ReactMarkdown>{loading ? "Creation... " : story}</ReactMarkdown>
+          <ReactMarkdown>{story}</ReactMarkdown>
         </div>
       )}
       <StripeModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
